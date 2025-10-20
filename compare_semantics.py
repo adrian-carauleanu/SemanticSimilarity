@@ -15,13 +15,20 @@ os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 from sentence_transformers import SentenceTransformer, losses
 import keyboard
 import threading
+import torch
 
 # Set your API key here or via environment variable
 # genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
 # Load a pre-trained model (free and local)
-model = SentenceTransformer('all-MiniLM-L6-v2')
+#model_name = 'all-MiniLM-L6-v2'
+model_name = 'all-mpnet-base-v2'
+model = SentenceTransformer(model_name)
 loss = losses.MultipleNegativesRankingLoss(model)
+
+# Move model to GPU if available
+device = "cuda" if torch.cuda.is_available() else "cpu"
+model = model.to(device)
 
 def compare_semantics(str1, str2):
     print(f"Input strings: str1='{str1}', str2='{str2}'")
@@ -55,6 +62,9 @@ def main():
 
     # Start the monitoring thread
     threading.Thread(target=monitor_ctrl_x, daemon=True).start()
+    # prints the name of the loaded model
+    print(f"Model name: {model_name}") 
+    print(f"Model device: {model.device}") 
 
     while True:
         print("Provide 2 strings for semantic comparison")
