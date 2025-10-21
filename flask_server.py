@@ -78,4 +78,4 @@ if __name__ == "__main__":
     print(f"Model name: {cs.model_name}")
     print(f"Model device: {cs.model.device}")
     # Run the Flask app
-    app.run(host="127.0.0.1", port=8432, debug=True)
+    app.run(host="0.0.0.0", port=8432, debug=False) #, ssl_context=('cert.pem', 'key.pem'))

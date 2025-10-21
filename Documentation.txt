@@ -1,0 +1,72 @@
+# Add cloudflare gpg key
+sudo mkdir -p --mode=0755 /usr/share/keyrings
+curl -fsSL https://pkg.cloudflare.com/cloudflare-main.gpg | sudo tee /usr/share/keyrings/cloudflare-main.gpg >/dev/null
+
+# Add this repo to your apt repositories
+echo 'deb [signed-by=/usr/share/keyrings/cloudflare-main.gpg] https://pkg.cloudflare.com/cloudflared any main' | sudo tee /etc/apt/sources.list.d/cloudflared.list
+
+# install cloudflared
+sudo apt-get update && sudo apt-get install cloudflared
+
+#Cloud flare created 
+/usr/share/keyrings/cloudflare-main.gpg
+
+#Create ssl certificate
+sudo apt update && sudo apt install certbot  # On Ubuntu/Debian
+sudo certbot certonly --standalone -d adrian-carauleanu.go.ro
+
+For this I had to stop map the port 80 in the Tenda router Virtual Server to external 80 because certbot creates a local server on port 80 that needs to be accessible on site address http://adrian-carauleanu.go.ro
+
+certs are generated at /etc/letsencrypt/live/adrian-carauleanu.go.ro/
+
+# Installed Nginx
+
+Next Steps for Production HTTPS
+Set Up Nginx as Reverse Proxy:
+
+Install Nginx if not already: sudo apt install nginx.
+Create a config file: sudo nano /etc/nginx/sites-available/adrian-carauleanu.go.ro
+server {
+    listen 80;
+    server_name adrian-carauleanu.go.ro;
+    return 301 https://$server_name$request_uri;  # Redirect HTTP to HTTPS
+}
+
+server {
+    listen 443 ssl;
+    server_name adrian-carauleanu.go.ro;
+    
+    ssl_certificate /etc/letsencrypt/live/adrian-carauleanu.go.ro/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/adrian-carauleanu.go.ro/privkey.pem;
+    
+    location / {
+        proxy_pass http://127.0.0.1:8432;  # Forward to Flask on port 8432
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+Enable the site: sudo ln -s /etc/nginx/sites-available/adrian-carauleanu.go.ro /etc/nginx/sites-enabled/
+Test and reload: sudo nginx -t && sudo systemctl reload nginx
+Update Router Forwarding:
+
+Ensure external ports 80 and 443 forward to your server's local IP (e.g., 192.168.0.188) on ports 80 and 443.
+This allows Nginx to handle HTTP/HTTPS traffic.
+Run Flask Server:
+
+Start your Flask app on port 8432 (without SSL context, as Nginx handles it):
+python flask_server.py
+Your code remains unchanged.
+Test HTTPS:
+
+Access https://adrian-carauleanu.go.ro—it should load without "Not Secure" warnings.
+The /compare API and GUI will be HTTPS-only.
+Auto-Renew Certificates:
+
+Let's Encrypt certs expire in 90 days. Set up auto-renewal:
+sudo crontab -e
+Add: 0 12 * * * /usr/bin/certbot renew --quiet && systemctl reload nginx
+This renews certs and reloads Nginx daily at noon.
+
+
